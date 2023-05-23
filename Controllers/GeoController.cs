@@ -2,6 +2,8 @@
 using MaxMind.GeoIP2;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using Microsoft.Extensions.Configuration;
 
 namespace Geolocalizacion.Controllers
 {
@@ -9,21 +11,38 @@ namespace Geolocalizacion.Controllers
     [ApiController]
     public class GeoController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
+
+        public GeoController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+        
         [HttpGet("[action]/{ipAddress}")]
         public IActionResult GetCountry(string ipAddress)
-        {            
-            using var reader = new DatabaseReader(@"C:\Desarrollo\Geo-Location-API-Net-Core-master\GeoLite2-Country.mmdb");
-
-            var response = reader.Country(ipAddress);
-
-            var geoLocation = new GeoClass
+        {
+            string strRuta = _configuration.GetValue<string>("ConnectionStrings:pathDB");
+            try
             {
-                countryName = response.Country.Name,
-                countryIsoCode = response.Country.IsoCode,
-                IsInEuropeanUnion = response.Country.IsInEuropeanUnion
-            };
+                using var reader = new DatabaseReader(strRuta);
 
-            return StatusCode(StatusCodes.Status200OK, geoLocation);
+                var response = reader.Country(ipAddress);
+
+                var geoLocation = new GeoClass
+                {
+                    countryName = response.Country.Name,
+                    countryIsoCode = response.Country.IsoCode,
+                    IsInEuropeanUnion = response.Country.IsInEuropeanUnion
+                };
+
+                return StatusCode(StatusCodes.Status200OK, geoLocation);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(StatusCodes.Status406NotAcceptable, ex.Message);
+            }
+
+
 
 
         }
